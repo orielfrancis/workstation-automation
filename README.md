@@ -1,5 +1,7 @@
 # Workstation automation (Bluefin DX)
 
+[![ShellCheck](https://github.com/orielfrancis/workstation-automation/actions/workflows/shellcheck.yml/badge.svg)](https://github.com/orielfrancis/workstation-automation/actions/workflows/shellcheck.yml)
+
 Scripts and systemd user units that keep my Bluefin DX workstation
 (Fedora Atomic / Universal Blue) healthy. Everything runs as my user: no root,
 nothing installed into the immutable OS image.
