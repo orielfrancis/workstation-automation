@@ -21,7 +21,6 @@ These rules are mandatory.
 ## Scripts must pass ShellCheck
 - Run `shellcheck -S warning bluefin/scripts/*.sh` before proposing a change.
   No warnings or errors; `info` notes are fine when the code is intentional.
-- Known open item: SC2010 (`ls | grep`) in `health-check.sh`, at the `PREV=` line.
 - Bash scripts: `#!/usr/bin/env bash`; quote variables.
 
 ## systemd units use full paths
