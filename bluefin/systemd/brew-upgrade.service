@@ -4,6 +4,9 @@ Description=Weekly Homebrew upgrade (uupd only runs brew update)
 [Service]
 Type=oneshot
 Environment=HOMEBREW_NO_ENV_HINTS=1
-ExecStart=/home/linuxbrew/.linuxbrew/bin/brew upgrade
+# Formulae only: the 1Password cask (ublue-os/tap/1password-gui-linux) needs
+# sudo to upgrade, so an unattended `brew upgrade` would fail and leave a
+# failed unit. Upgrade casks manually: brew upgrade --cask <name>
+ExecStart=/home/linuxbrew/.linuxbrew/bin/brew upgrade --formula
 Nice=10
 TimeoutStartSec=45min

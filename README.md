@@ -20,7 +20,7 @@ bluefin/
 | Timer | Schedule | What it does |
 |---|---|---|
 | `bluefin-health.timer` | Daily 04:45 | Read-only health report |
-| `brew-upgrade.timer` | Sundays 05:15 | `brew upgrade` |
+| `brew-upgrade.timer` | Sundays 05:15 | `brew upgrade --formula` |
 | `clean-to-delete.timer` | Daily 10:00 | Reminds about, then deletes, old files in `~/ai/_to_delete` |
 
 All three timers use `Persistent=true`: a run missed because the machine was
@@ -53,7 +53,10 @@ Run it now: `systemctl --user start bluefin-health.service`
 ### brew-upgrade: weekly Homebrew upgrade
 
 `uupd` only runs `brew update` (it refreshes the package list); this timer
-runs `brew upgrade` to actually install new versions.
+runs `brew upgrade --formula` to actually install new versions of formulae.
+Casks are skipped: the 1Password cask (`ublue-os/tap/1password-gui-linux`)
+needs sudo to upgrade, so an unattended run would fail. Upgrade casks
+manually with `brew upgrade --cask <name>`.
 Service limits: `Nice=10`, 45-minute timeout.
 Log: `journalctl --user -u brew-upgrade`
 
