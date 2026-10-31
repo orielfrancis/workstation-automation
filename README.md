@@ -7,6 +7,9 @@ Scripts and systemd user units that keep my Bluefin DX workstation
 nothing installed into the immutable OS image.
 
 ```
+.devcontainer/
+├── Dockerfile                dev container image (authoring and linting only)
+└── devcontainer.json         VS Code Dev Containers settings
 bluefin/
 ├── auth/
 │   └── README.md             lid-aware fingerprint + YubiKey sudo (manual, system-level)
@@ -153,6 +156,42 @@ the state in `~/.local/state/clean-to-delete/` are left in place.
 
 **If you uninstall `clean-to-delete`, nothing empties `~/ai/_to_delete`
 anymore**, including the files just moved there.
+
+## Development
+
+`.devcontainer/` holds a dev container for editing and linting this repo.
+It is for **authoring and linting only**: the scripts and units target the
+Bluefin host, so don't run them, `systemctl`, `brew` or `flatpak` inside it.
+
+What the container provides:
+
+- **Base image** `mcr.microsoft.com/devcontainers/base:ubuntu-24.04`, pinned
+  to the Ubuntu 24.04 tag so it can't move to a new release without notice.
+- **ShellCheck** from Ubuntu's packages, the same linter CI runs on every PR.
+- **Claude Code**, installed with Anthropic's native installer as the
+  non-root `vscode` user, so the binary in `~/.local/bin` is user-owned and
+  auto-update works.
+- **VS Code extensions:** ShellCheck (`timonwong.shellcheck`) and Claude Code
+  (`anthropic.claude-code`).
+- **A named volume** mounted at `/home/vscode/.claude` that keeps the Claude
+  Code login and settings across container rebuilds.
+
+Requirements: Docker and the VS Code Dev Containers extension
+(`ms-vscode-remote.remote-containers`). On Bluefin DX, run `ujust dx-groups`
+first so your user is in the `docker` group.
+
+Open it: in VS Code, run **Dev Containers: Reopen in Container** from the
+Command Palette. After each build the container runs `shellcheck --version`
+and `claude --version` to confirm both tools work.
+
+Lint before proposing a script change:
+
+```bash
+shellcheck -S warning bluefin/scripts/*.sh
+```
+
+Commit, sign and push from the host, not the container: the GPG key isn't
+available inside it.
 
 ## License
 
