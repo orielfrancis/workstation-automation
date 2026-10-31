@@ -1,0 +1,18 @@
+{
+  "name": "workstation-automation",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "vscode",
+  "mounts": [
+    "source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume"
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["timonwong.shellcheck", "anthropic.claude-code"],
+      "settings": { "shellcheck.executablePath": "/usr/bin/shellcheck" }
+    }
+  },
+  "postCreateCommand": "shellcheck --version && claude --version"
+}

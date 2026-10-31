@@ -62,6 +62,21 @@ These rules are mandatory.
   `bluefin-health.timer`, `brew-upgrade.timer`, `clean-to-delete.timer`,
   `logrotate.timer`) without asking.
 
+## Dev container
+- `.devcontainer/` is for authoring and linting only. Never run the
+  automation scripts, `systemctl`, `brew` or `flatpak` inside the container;
+  they target the Bluefin host.
+- Lint with `shellcheck -S warning bluefin/scripts/*.sh` before proposing a
+  script change.
+- Commit, sign and push only on the host. The GPG key is not in the container.
+- Never add host mounts of `~/.ssh`, `~/.gnupg` or any credentials to
+  `devcontainer.json`.
+- Keep the base image tag pinned (`ubuntu-24.04`); never use a floating tag
+  such as `ubuntu` or `latest`.
+- Install Claude Code with Anthropic's native installer as the `vscode` user,
+  not with the Dev Container Feature. The Feature installs as root, which
+  blocks auto-update.
+
 ## Git workflow
 - Never commit directly to `main`. Create a branch (`fix/...`, `feat/...`,
   `docs/...`) and propose changes through a pull request.
