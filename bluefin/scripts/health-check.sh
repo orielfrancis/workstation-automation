@@ -50,7 +50,12 @@ run() { local title="$1"; shift; section "$title"; timeout 180 "$@" 2>&1 </dev/n
 } > "$RAW" 2>&1
 
 # ---------- 2. Find previous report for comparison ----------
-PREV=$(ls -1 "$OUT_DIR"/bluefin-*.md 2>/dev/null | grep -v "bluefin-$DATE.md" | tail -n 1)
+PREV=""
+for f in "$OUT_DIR"/bluefin-*.md; do
+  [ -e "$f" ] || continue        # no reports yet: the glob stays unexpanded
+  [ "$f" = "$OUT" ] && continue  # skip today's report
+  PREV="$f"                      # glob is sorted, so the last one kept is the newest
+done
 
 PROMPT="You are a Linux systems engineer reviewing nightly health data for the owner's Bluefin DX laptop \
 (Dell XPS 15 9530, Fedora Atomic / immutable, docked with lid closed, always on). \
