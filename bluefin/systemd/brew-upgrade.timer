@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Homebrew upgrade every Sunday at 5:15 AM
+
+[Timer]
+OnCalendar=Sun *-*-* 05:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

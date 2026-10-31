@@ -1,0 +1,7 @@
+[Unit]
+Description=Remind about and delete old files in ~/ai/_to_delete
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/bin/clean-to-delete.sh

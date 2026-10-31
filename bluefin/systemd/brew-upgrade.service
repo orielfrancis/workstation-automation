@@ -1,0 +1,9 @@
+[Unit]
+Description=Weekly Homebrew upgrade (uupd only runs brew update)
+
+[Service]
+Type=oneshot
+Environment=HOMEBREW_NO_ENV_HINTS=1
+ExecStart=/home/linuxbrew/.linuxbrew/bin/brew upgrade
+Nice=10
+TimeoutStartSec=45min

@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Bluefin health check daily at 4:45 AM (after the uupd updater)
+
+[Timer]
+OnCalendar=*-*-* 04:45:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

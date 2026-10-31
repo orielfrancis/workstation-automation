@@ -1,0 +1,8 @@
+[Unit]
+Description=Bluefin nightly health check (read-only report to ~/ai/notes/health)
+
+[Service]
+Type=oneshot
+ExecStart=%h/ai/sysadmin/health/health-check.sh
+Nice=10
+TimeoutStartSec=20min
