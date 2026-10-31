@@ -1,3 +1,4 @@
 raw/
 *.tmp
 .env
+u2f_keys

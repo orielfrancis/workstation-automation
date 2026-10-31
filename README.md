@@ -8,9 +8,12 @@ nothing installed into the immutable OS image.
 
 ```
 bluefin/
+├── auth/
+│   └── README.md             lid-aware fingerprint + YubiKey sudo (manual, system-level)
 ├── scripts/
 │   ├── health-check.sh       nightly read-only health report
-│   └── clean-to-delete.sh    reminder + cleanup for ~/ai/_to_delete
+│   ├── clean-to-delete.sh    reminder + cleanup for ~/ai/_to_delete
+│   └── lid-is-open.sh        PAM lid check (installed to /usr/local/bin/lid-is-open)
 └── systemd/
     ├── bluefin-health.service / .timer
     ├── brew-upgrade.service   / .timer
@@ -83,6 +86,19 @@ Preview without changing anything:
 ```bash
 ~/bin/clean-to-delete.sh --dry-run
 ```
+
+## Authentication
+
+Lid-aware fingerprint and YubiKey taps for `sudo` and polkit prompts, set up
+through a custom authselect profile. Unlike the timers above, this part
+changes system PAM files and is applied by hand, not by an installer.
+
+- Lid closed (docked): no fingerprint wait; YubiKey tap or password.
+- Lid open: fingerprint works as before.
+- Login and lock screens: password (plus fingerprint with the lid open),
+  no YubiKey.
+
+Steps, tests and rollbacks: [bluefin/auth/README.md](bluefin/auth/README.md).
 
 ## Requirements
 
