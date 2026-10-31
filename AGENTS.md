@@ -22,6 +22,17 @@ These rules are mandatory.
 - Run `shellcheck -S warning bluefin/scripts/*.sh` before proposing a change.
   No warnings or errors; `info` notes are fine when the code is intentional.
 - Bash scripts: `#!/usr/bin/env bash`; quote variables.
+- Exception: `bluefin/scripts/lid-is-open.sh` is intentionally POSIX `sh`
+  with `#!/bin/sh` and shell built-ins only, because PAM (`pam_exec`) runs it
+  with a minimal environment. Don't convert it to bash.
+
+## Authentication (PAM) changes
+- Change PAM only through the custom authselect profile
+  (`/etc/authselect/custom/lid-aware-fp/`), never by editing `/etc/pam.d`
+  directly. See `bluefin/auth/README.md`.
+- Every `authselect select` or `apply-changes` uses a named `--backup=...`.
+- A root shell (`sudo -i`) must be open in a second terminal before any PAM
+  change, and stay open until the tests pass.
 
 ## systemd units use full paths
 - `ExecStart=` and every path in a unit must be absolute, or use a systemd
@@ -33,6 +44,8 @@ These rules are mandatory.
 ## No secrets or personal data
 - Never commit tokens, passwords, keys, `.env` files, raw health data (`raw/`),
   report contents, IP addresses or Tailscale names.
+- Never commit `u2f_keys` or any other key material (YubiKey registrations,
+  private keys, recovery codes).
 - Check the diff for personal details before every commit.
 
 ## Never delete files
