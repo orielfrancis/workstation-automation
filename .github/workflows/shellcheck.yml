@@ -15,5 +15,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
-      - name: Run ShellCheck
-        run: shellcheck -S warning bluefin/scripts/*.sh
+      - name: Run ShellCheck in the dev container
+        uses: devcontainers/ci@v0.3.1900000450
+        with:
+          push: never
+          runCmd: |
+            shellcheck --version
+            shellcheck -S warning bluefin/scripts/*.sh

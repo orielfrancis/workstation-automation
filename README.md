@@ -167,7 +167,9 @@ What the container provides:
 
 - **Base image** `mcr.microsoft.com/devcontainers/base:ubuntu-24.04`, pinned
   to the Ubuntu 24.04 tag so it can't move to a new release without notice.
-- **ShellCheck** from Ubuntu's packages, the same linter CI runs on every PR.
+- **ShellCheck** v0.11.0, pinned from the upstream GitHub release and checked
+  against a SHA256 hash per architecture (amd64 and arm64). CI builds this
+  same container and runs ShellCheck inside it.
 - **Claude Code**, installed with Anthropic's native installer as the
   non-root `vscode` user, so the binary in `~/.local/bin` is user-owned and
   auto-update works.
