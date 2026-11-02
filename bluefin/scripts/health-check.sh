@@ -36,8 +36,10 @@ run() { local title="$1"; shift; section "$title"; timeout 180 "$@" 2>&1 </dev/n
   run "Recent boots (last 5)"           bash -c 'journalctl --list-boots --no-pager -q | tail -n 5'
   run "Shutdown/reboot history (clean shutdowns are logged)" bash -c 'last -x -F reboot shutdown 2>/dev/null | head -n 12'
   run "Previous boot: last 15 log lines before it ended" bash -c 'journalctl -b -1 -n 15 --no-pager -q 2>&1'
+  # shellcheck disable=SC2016  # $(...) is expanded by the inner bash -c.
   run "Power profile (tuned-ppd; powerprofilesctl is not installed)" bash -c 'tuned-adm active; echo "firmware platform_profile: $(cat /sys/firmware/acpi/platform_profile 2>/dev/null)"'
   run "Temperatures"                    bash -c 'command -v sensors >/dev/null && sensors || echo "lm_sensors not installed"'
+  # shellcheck disable=SC2016  # $b and $(...) are expanded by the inner bash -c.
   run "Battery"                         bash -c 'b=$(upower -e | grep -m1 BAT); [ -n "$b" ] && upower -i "$b" || echo "no battery found"'
   run "Flatpak updates available"       flatpak remote-ls --updates
   run "Homebrew outdated"               bash -c "[ -x $BREW ] && $BREW outdated || echo 'brew not found'"
