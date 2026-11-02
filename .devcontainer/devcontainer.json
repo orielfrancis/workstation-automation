@@ -11,7 +11,7 @@
   "customizations": {
     "vscode": {
       "extensions": ["timonwong.shellcheck", "anthropic.claude-code"],
-      "settings": { "shellcheck.executablePath": "/usr/bin/shellcheck" }
+      "settings": { "shellcheck.executablePath": "/usr/local/bin/shellcheck" }
     }
   },
   "postCreateCommand": "shellcheck --version && claude --version"
