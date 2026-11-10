@@ -22,7 +22,8 @@ bluefin/
 │   ├── bluefin-health.service / .timer
 │   ├── brew-update.service    / .timer
 │   ├── brew-upgrade.service   / .timer
-│   └── clean-to-delete.service / .timer
+│   ├── clean-to-delete.service / .timer
+│   └── uresourced.service.d/restart.conf   drop-in: restart Fedora's uresourced user service after a crash
 └── uupd/
     └── config.json           turns off uupd's brew module (installed to /etc/uupd/config.json; system-level, needs sudo)
 ```
@@ -132,6 +133,18 @@ changes system PAM files and is applied by hand, not by an installer.
 
 Steps, tests and rollbacks: [bluefin/auth/README.md](bluefin/auth/README.md).
 
+### uresourced drop-in: restart after a crash
+
+`uresourced` is part of Fedora, not this repo. Its user service gives apps
+that are playing or recording audio a priority boost. Version 0.5.4 (Fedora
+44) sometimes segfaults while reading a PipeWire node: five times between
+Oct 28 and Nov 8, 2026, with the stack ending in `node_event_info` →
+`strtoll`. The stock unit has no `Restart=`, so one crash leaves it stopped
+until the next login. The drop-in adds `Restart=on-failure` (10-second
+delay). It works around the crash but doesn't fix it.
+Check: `systemctl --user show uresourced -p Restart -p NRestarts`.
+Crash history: `coredumpctl list uresourced`.
+
 ## Requirements
 
 - Bluefin DX (or another Fedora Atomic desktop) with systemd user sessions.
@@ -158,6 +171,7 @@ install -Dm755 bluefin/scripts/clean-to-delete.sh ~/bin/clean-to-delete.sh
 
 # Units
 install -Dm644 -t ~/.config/systemd/user bluefin/systemd/*.service bluefin/systemd/*.timer
+install -Dm644 -t ~/.config/systemd/user/uresourced.service.d bluefin/systemd/uresourced.service.d/restart.conf
 systemctl --user daemon-reload
 systemctl --user enable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
 
@@ -183,6 +197,7 @@ systemctl --user disable --now brew-update.timer bluefin-health.timer brew-upgra
 mkdir -p ~/ai/_to_delete
 mv ~/.config/systemd/user/{brew-update,bluefin-health,brew-upgrade,clean-to-delete}.{service,timer} ~/ai/_to_delete/
 mv ~/ai/sysadmin/health/health-check.sh ~/bin/clean-to-delete.sh ~/ai/_to_delete/
+mv ~/.config/systemd/user/uresourced.service.d ~/ai/_to_delete/uresourced.service.d-$(date +%F)
 systemctl --user daemon-reload
 ```
 
