@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly brief every Sunday at 6:00 PM (covers the previous Sunday-Saturday)
+
+[Timer]
+OnCalendar=Sun *-*-* 18:00:00
+Persistent=true
+Unit=brief@weekly.service
+
+[Install]
+WantedBy=timers.target

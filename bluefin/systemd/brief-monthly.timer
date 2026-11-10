@@ -1,0 +1,10 @@
+[Unit]
+Description=Monthly brief on the 1st of each month at 9:00 AM (covers the previous month)
+
+[Timer]
+OnCalendar=*-*-01 09:00:00
+Persistent=true
+Unit=brief@monthly.service
+
+[Install]
+WantedBy=timers.target
