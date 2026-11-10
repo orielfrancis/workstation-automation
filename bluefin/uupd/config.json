@@ -1,0 +1,10 @@
+{
+    "modules": {
+        "distrobox": {
+            "disable": true
+        },
+        "brew": {
+            "disable": true
+        }
+    }
+}

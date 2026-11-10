@@ -4,7 +4,8 @@
 
 Scripts and systemd user units that keep my Bluefin DX workstation
 (Fedora Atomic / Universal Blue) healthy. Everything runs as my user: no root,
-nothing installed into the immutable OS image.
+nothing installed into the immutable OS image. The two exceptions are
+applied by hand with sudo: `bluefin/auth/` (PAM) and `bluefin/uupd/config.json`.
 
 ```
 .devcontainer/
@@ -17,21 +18,25 @@ bluefin/
 │   ├── health-check.sh       nightly read-only health report
 │   ├── clean-to-delete.sh    reminder + cleanup for ~/ai/_to_delete
 │   └── lid-is-open.sh        PAM lid check (installed to /usr/local/bin/lid-is-open)
-└── systemd/
-    ├── bluefin-health.service / .timer
-    ├── brew-upgrade.service   / .timer
-    └── clean-to-delete.service / .timer
+├── systemd/
+│   ├── bluefin-health.service / .timer
+│   ├── brew-update.service    / .timer
+│   ├── brew-upgrade.service   / .timer
+│   └── clean-to-delete.service / .timer
+└── uupd/
+    └── config.json           turns off uupd's brew module (installed to /etc/uupd/config.json; system-level, needs sudo)
 ```
 
 ## Automations
 
 | Timer | Schedule | What it does |
 |---|---|---|
+| `brew-update.timer` | Daily 04:30 | `brew update`: refreshes package lists, installs nothing |
 | `bluefin-health.timer` | Daily 04:45 | Read-only health report |
 | `brew-upgrade.timer` | Sundays 05:15 | `brew upgrade --formula` |
 | `clean-to-delete.timer` | Daily 10:00 | Reminds about, then deletes, old files in `~/ai/_to_delete` |
 
-All three timers use `Persistent=true`: a run missed because the machine was
+All four timers use `Persistent=true`: a run missed because the machine was
 off or asleep runs at the next boot or login.
 
 ### bluefin-health: nightly health report
@@ -45,6 +50,10 @@ report shows the result of that night's update.
    recent boots and shutdowns, power profile (`tuned-adm`), temperatures,
    battery, pending Flatpak / Homebrew / firmware updates, Tailscale status,
    the pCloud client, top memory users, and the Claude Code version.
+   Homebrew's package lists are fresh because `brew-update.timer` runs at
+   04:30. The health check itself never runs `brew update`, so it stays
+   read-only. It also checks the 1Password cask: the installed version, whether the
+   program file exists, and whether an update is waiting.
    Saved to `~/ai/sysadmin/health/raw/bluefin-YYYY-MM-DD.txt` (local only).
 2. **Summarize.** Sends the raw data, plus the previous report for comparison,
    to Claude Code in headless mode (`claude -p`) with no write tools (Bash,
@@ -53,18 +62,38 @@ report shows the result of that night's update.
 3. **Write.** Saves the report to `~/ai/notes/health/bluefin-YYYY-MM-DD.md`.
    If the AI step fails, it writes a fallback report that holds the raw data
    and is marked `Status: Attention`.
-4. **Notify.** Sends a desktop notification with the status line.
+4. **1Password alert.** If 1Password is missing, or an update is waiting, the
+   script itself adds a `## 1Password` section to the report. The section
+   holds the exact command (`brew upgrade --cask 1password-gui-linux`). The
+   script also sends a separate "1Password needs attention" notification.
+   This step doesn't depend on the AI summary.
+5. **Notify.** Sends a desktop notification with the status line.
 
 Service limits: `Nice=10`, 20-minute timeout.
 Run it now: `systemctl --user start bluefin-health.service`
 
+### brew-update: daily Homebrew metadata refresh
+
+Runs `brew update --quiet` at 04:30. It refreshes the package lists and taps,
+and installs nothing. uupd used to do this nightly, until its brew module was
+turned off (see below). Without this refresh, the 04:45 health check would see
+a new 1Password version only after Sunday's `brew-upgrade` run.
+Service limits: `Nice=10`, 15-minute timeout.
+Log: `journalctl --user -u brew-update`
+
 ### brew-upgrade: weekly Homebrew upgrade
 
-`uupd` only runs `brew update` (it refreshes the package list); this timer
-runs `brew upgrade --formula` to actually install new versions of formulae.
+This timer runs `brew upgrade --formula` to install new versions of formulae.
 Casks are skipped: the 1Password cask (`ublue-os/tap/1password-gui-linux`)
-needs sudo to upgrade, so an unattended run would fail. Upgrade casks
+needs sudo to upgrade, so an unattended run fails. Upgrade casks
 manually with `brew upgrade --cask <name>`.
+
+**uupd's brew module is turned off** with `bluefin/uupd/config.json`, which
+is installed to `/etc/uupd/config.json`. uupd 1.5.2 runs `brew upgrade -y`,
+which includes casks, not only `brew update`. On 2026-11-08 that unattended
+run waited about 38 hours for a sudo prompt on the 1Password cask. It then
+failed partway, and Homebrew's rollback removed 1Password completely. Check
+the setting with `uupd config-dump | grep -A2 '"brew"'`.
 Service limits: `Nice=10`, 45-minute timeout.
 Log: `journalctl --user -u brew-upgrade`
 
@@ -130,10 +159,16 @@ install -Dm755 bluefin/scripts/clean-to-delete.sh ~/bin/clean-to-delete.sh
 # Units
 install -Dm644 -t ~/.config/systemd/user bluefin/systemd/*.service bluefin/systemd/*.timer
 systemctl --user daemon-reload
-systemctl --user enable --now bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user enable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
 
 # Check
-systemctl --user list-timers bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user list-timers brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+
+# System-level (needs sudo): turn off uupd's brew module. Back up the current file first.
+sudo cp -a /etc/uupd/config.json /etc/uupd/config.json.bak-$(date +%F)
+sudo cp bluefin/uupd/config.json /etc/uupd/config.json   # plain cp keeps the file's owner and SELinux label
+uupd config-dump | grep -A2 '"brew"'                     # expect "disable": true
+# Undo: sudo cp /etc/uupd/config.json.bak-<date> /etc/uupd/config.json
 ```
 
 To install just one automation, copy its script (if any) and its two unit
@@ -142,11 +177,11 @@ files, then enable only that timer.
 ## Uninstall
 
 ```bash
-systemctl --user disable --now bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user disable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
 
 # Move the files to the holding folder instead of deleting them
 mkdir -p ~/ai/_to_delete
-mv ~/.config/systemd/user/{bluefin-health,brew-upgrade,clean-to-delete}.{service,timer} ~/ai/_to_delete/
+mv ~/.config/systemd/user/{brew-update,bluefin-health,brew-upgrade,clean-to-delete}.{service,timer} ~/ai/_to_delete/
 mv ~/ai/sysadmin/health/health-check.sh ~/bin/clean-to-delete.sh ~/ai/_to_delete/
 systemctl --user daemon-reload
 ```
