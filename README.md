@@ -16,12 +16,14 @@ bluefin/
 │   └── README.md             lid-aware fingerprint + YubiKey sudo (manual, system-level)
 ├── scripts/
 │   ├── health-check.sh       nightly read-only health report
+│   ├── brief.sh              weekly / monthly short briefs (health, fixes, changes)
 │   ├── clean-to-delete.sh    reminder + cleanup for ~/ai/_to_delete
 │   └── lid-is-open.sh        PAM lid check (installed to /usr/local/bin/lid-is-open)
 ├── systemd/
 │   ├── bluefin-health.service / .timer
 │   ├── brew-update.service    / .timer
 │   ├── brew-upgrade.service   / .timer
+│   ├── brief@.service + brief-weekly.timer / brief-monthly.timer
 │   ├── clean-to-delete.service / .timer
 │   └── uresourced.service.d/restart.conf   drop-in: restart Fedora's uresourced user service after a crash
 └── uupd/
@@ -36,8 +38,10 @@ bluefin/
 | `bluefin-health.timer` | Daily 04:45 | Read-only health report |
 | `brew-upgrade.timer` | Sundays 05:15 | `brew upgrade --formula` |
 | `clean-to-delete.timer` | Daily 10:00 | Reminds about, then deletes, old files in `~/ai/_to_delete` |
+| `brief-weekly.timer` | Sundays 18:00 | Short brief of the previous Sunday–Saturday |
+| `brief-monthly.timer` | 1st of month 09:00 | Short brief of the previous month |
 
-All four timers use `Persistent=true`: a run missed because the machine was
+All six timers use `Persistent=true`: a run missed because the machine was
 off or asleep runs at the next boot or login.
 
 ### bluefin-health: nightly health report
@@ -97,6 +101,32 @@ failed partway, and Homebrew's rollback removed 1Password completely. Check
 the setting with `uupd config-dump | grep -A2 '"brew"'`.
 Service limits: `Nice=10`, 45-minute timeout.
 Log: `journalctl --user -u brew-upgrade`
+
+### briefs: weekly and monthly summaries
+
+The briefs are short reminders of what happened, not reports. Each one has a
+one-sentence health line, then a `### heading` and one or two sentences for
+each fix, change, or open item.
+
+- **Weekly:** Sundays at 18:00. It covers the last full Sunday–Saturday week
+  and is saved as `~/ai/notes/briefs/weekly-<start date>.md`.
+- **Monthly:** the 1st at 09:00. It covers the previous month, mostly using
+  that month's weekly briefs, and is saved as
+  `~/ai/notes/briefs/monthly-YYYY-MM.md`.
+
+The script reads three sources: health-report status lines and their changes
+sections (Bluefin and Mac), the titles and headings of session notes and
+runbooks changed in the period (`~/ai/notes`, the vault's `40-Sessions`),
+and git commit subjects from the repos in `~/dev`. It then calls `claude -p`
+with all tools blocked.
+
+The output is copied to `~/Documents/syncshared/ai-notes/briefs/`.
+`~/ai/notes` itself syncs through pCloud and is mirrored into the
+AI-Vault (`95-Mirror`). Each run sends a desktop notification. The briefs
+are personal, so they are never committed here.
+
+Run now: `systemctl --user start brief@weekly.service`.
+Test without touching the real folder: `bluefin/scripts/brief.sh weekly --out /tmp/x`.
 
 ### clean-to-delete: two-stage cleanup of ~/ai/_to_delete
 
@@ -158,6 +188,7 @@ Crash history: `coredumpctl list uresourced`.
     "not installed" without it.
 - **brew-upgrade:** Homebrew at `/home/linuxbrew/.linuxbrew/bin/brew`.
 - **clean-to-delete:** nothing extra.
+- **briefs:** Claude Code at `~/.local/bin/claude`, signed in; `git`.
 
 User timers run only while the user's systemd instance is running (that is,
 while logged in), unless lingering is on (`loginctl enable-linger $USER`).
@@ -168,15 +199,16 @@ while logged in), unless lingering is on (`loginctl enable-linger $USER`).
 # Scripts (install -D creates the target folders)
 install -Dm755 bluefin/scripts/health-check.sh    ~/ai/sysadmin/health/health-check.sh
 install -Dm755 bluefin/scripts/clean-to-delete.sh ~/bin/clean-to-delete.sh
+install -Dm755 bluefin/scripts/brief.sh           ~/ai/sysadmin/briefs/brief.sh
 
 # Units
 install -Dm644 -t ~/.config/systemd/user bluefin/systemd/*.service bluefin/systemd/*.timer
 install -Dm644 -t ~/.config/systemd/user/uresourced.service.d bluefin/systemd/uresourced.service.d/restart.conf
 systemctl --user daemon-reload
-systemctl --user enable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user enable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer brief-weekly.timer brief-monthly.timer
 
 # Check
-systemctl --user list-timers brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user list-timers brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer brief-weekly.timer brief-monthly.timer
 
 # System-level (needs sudo): turn off uupd's brew module. Back up the current file first.
 sudo cp -a /etc/uupd/config.json /etc/uupd/config.json.bak-$(date +%F)
@@ -191,17 +223,18 @@ files, then enable only that timer.
 ## Uninstall
 
 ```bash
-systemctl --user disable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer
+systemctl --user disable --now brew-update.timer bluefin-health.timer brew-upgrade.timer clean-to-delete.timer brief-weekly.timer brief-monthly.timer
 
 # Move the files to the holding folder instead of deleting them
 mkdir -p ~/ai/_to_delete
 mv ~/.config/systemd/user/{brew-update,bluefin-health,brew-upgrade,clean-to-delete}.{service,timer} ~/ai/_to_delete/
-mv ~/ai/sysadmin/health/health-check.sh ~/bin/clean-to-delete.sh ~/ai/_to_delete/
+mv ~/.config/systemd/user/brief@.service ~/.config/systemd/user/brief-{weekly,monthly}.timer ~/ai/_to_delete/
+mv ~/ai/sysadmin/health/health-check.sh ~/bin/clean-to-delete.sh ~/ai/sysadmin/briefs/brief.sh ~/ai/_to_delete/
 mv ~/.config/systemd/user/uresourced.service.d ~/ai/_to_delete/uresourced.service.d-$(date +%F)
 systemctl --user daemon-reload
 ```
 
-Reports in `~/ai/notes/health/`, raw data in `~/ai/sysadmin/health/raw/` and
+Reports in `~/ai/notes/health/`, briefs in `~/ai/notes/briefs/`, raw data in `~/ai/sysadmin/health/raw/` and
 the state in `~/.local/state/clean-to-delete/` are left in place.
 
 **If you uninstall `clean-to-delete`, nothing empties `~/ai/_to_delete`

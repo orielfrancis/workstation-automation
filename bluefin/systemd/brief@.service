@@ -1,0 +1,8 @@
+[Unit]
+Description=Write the %i brief (short summary of health, fixes and changes) to ~/ai/notes/briefs
+
+[Service]
+Type=oneshot
+ExecStart=%h/ai/sysadmin/briefs/brief.sh %i
+Nice=10
+TimeoutStartSec=20min
