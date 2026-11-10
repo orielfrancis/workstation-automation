@@ -21,7 +21,8 @@ NOTES="$HOME/ai/notes"
 VAULT_SESSIONS="$HOME/Documents/AI-Vault/40-Sessions"
 DEV="$HOME/dev"
 CLAUDE="$HOME/.local/bin/claude"
-mkdir -p "$OUT_DIR"
+WORK_DIR="$HOME/ai/sysadmin/briefs/work"   # temp files: local only, never in the synced notes folder
+mkdir -p "$OUT_DIR" "$WORK_DIR"
 
 case "$MODE" in
   weekly)
@@ -43,7 +44,7 @@ case "$MODE" in
   *) echo "usage: $0 weekly|monthly [--out DIR]" >&2; exit 2 ;;
 esac
 SINCE="$START 00:00"; UNTIL="$END 23:59:59"
-TMP="$OUT_DIR/.brief.tmp"
+TMP="$WORK_DIR/$MODE.tmp"   # overwritten each run; nothing is deleted
 
 in_window() {  # file modified inside the window?
   local m; m=$(date -r "$1" +%F); [[ "$m" > "$START" || "$m" == "$START" ]] && [[ "$m" < "$END" || "$m" == "$END" ]]
