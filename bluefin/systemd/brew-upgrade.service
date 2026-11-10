@@ -1,5 +1,5 @@
 [Unit]
-Description=Weekly Homebrew upgrade (uupd only runs brew update)
+Description=Weekly Homebrew upgrade of formulae (casks are upgraded by hand)
 
 [Service]
 Type=oneshot

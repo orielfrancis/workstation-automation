@@ -43,6 +43,7 @@ run() { local title="$1"; shift; section "$title"; timeout 180 "$@" 2>&1 </dev/n
   run "Battery"                         bash -c 'b=$(upower -e | grep -m1 BAT); [ -n "$b" ] && upower -i "$b" || echo "no battery found"'
   run "Flatpak updates available"       flatpak remote-ls --updates
   run "Homebrew outdated"               bash -c "[ -x $BREW ] && $BREW outdated || echo 'brew not found'"
+  run "1Password (Homebrew cask, upgraded by hand)" bash -c "$BREW info --cask 1password-gui-linux 2>&1 | sed -n '1p;4p'; [ -x /home/linuxbrew/.linuxbrew/bin/1password ] && echo 'program: OK' || echo 'program: MISSING (broken install)'; echo 'update waiting:'; $BREW outdated --cask --verbose 1password-gui-linux || true"
   run "Firmware updates (fwupd)"        fwupdmgr get-updates --no-unreported-check
   run "Tailscale"                       tailscale status
   run "pCloud processes (should be exactly one client)" bash -c 'ps -eo pid,etime,stat,args | grep -i "[p]cloud" || echo "NO sync client process found"'
@@ -78,6 +79,7 @@ Power mode is managed by tuned-ppd: powerprofilesctl is NOT installed, so never 
 Power mode is Balanced (tuned balanced, firmware balanced). A Power Saver test on Oct 27-28 did not lower idle fan speed, so do not recommend power-profile changes; report the active profile and flag it only if it is not balanced. \
 Bluetooth SCO or hands-free messages mean a headset was in call/voice mode; list them as Info unless the headset disconnects repeatedly. \
 Bluefin auto-updates nightly via uupd at about 4:00-4:15 AM, before this report; a staged rpm-ostree deployment just means reboot when convenient (Info, not Attention). \
+1Password is a Homebrew cask upgraded only by hand: flag Attention if it shows 'Not installed' or 'program: MISSING', and if an update is waiting list it as Attention with the command 'brew upgrade --cask 1password-gui-linux' (needs one sudo/YubiKey tap). \
 Journal errors are given as grouped counts across the full 24 hours (digits replaced by N): summarize them by count and source, and call out anything new compared with the previous report. \
 Do not invent data. If a section errored or is missing, say so. Output only the report."
 if [ -n "$PREV" ]; then
@@ -107,6 +109,33 @@ else
     cat "$RAW"
     echo '```'
   } > "$OUT"
+fi
+
+# ---------- 3b. 1Password: fixed text + its own notification (not left to the AI) ----------
+# The cask needs sudo, so it is never upgraded automatically (see runbook A8/A9).
+# Reads the "1Password" section that run() already collected into $RAW; runs no new commands.
+OP_SEC=$(sed -n '/^===== 1Password/,/^===== /p' "$RAW")
+OP_MSG=""
+if printf '%s\n' "$OP_SEC" | grep -q -e 'program: MISSING' -e 'Not installed'; then
+  OP_MSG="1Password is MISSING or broken. Fix: runbook ~/ai/notes/fedora-atomic-auth-1password-runbook.md, section A9."
+else
+  OP_NEW=$(printf '%s\n' "$OP_SEC" | sed -n '/^update waiting:/,$p' | grep -m1 -F '1password-gui-linux')
+  [ -n "$OP_NEW" ] && OP_MSG="1Password update waiting ($OP_NEW). In a terminal run: brew upgrade --cask 1password-gui-linux  (one sudo/YubiKey tap), then quit and reopen 1Password."
+fi
+if [ -n "$OP_MSG" ]; then
+  {
+    echo
+    echo "## 1Password"
+    echo
+    echo "$OP_MSG"
+    echo
+    echo '```bash'
+    echo 'brew upgrade --cask 1password-gui-linux'
+    echo '```'
+    echo
+    echo "Details: ~/ai/notes/fedora-atomic-auth-1password-runbook.md (A8, A9)."
+  } >> "$OUT"
+  command -v notify-send >/dev/null && notify-send -a "Health check" "1Password needs attention" "$OP_MSG" 2>/dev/null || true
 fi
 
 # ---------- 4. Desktop notification (harmless if no session) ----------

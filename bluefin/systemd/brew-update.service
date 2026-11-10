@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Homebrew metadata refresh (brew update; installs nothing)
+
+[Service]
+Type=oneshot
+Environment=HOMEBREW_NO_ENV_HINTS=1
+# Refreshes Homebrew's package lists and taps only. uupd used to do this, but
+# its brew module is disabled (bluefin/uupd/config.json). Runs before
+# bluefin-health (04:45), so that check sees new versions, e.g. 1Password.
+ExecStart=/home/linuxbrew/.linuxbrew/bin/brew update --quiet
+Nice=10
+TimeoutStartSec=15min
